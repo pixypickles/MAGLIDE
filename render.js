@@ -1,7 +1,22 @@
 import {CFG} from './config.js';
 
+function roundedRectPath(c,x,y,w,h,r){
+  const rr=Math.min(r,w/2,h/2);
+  c.beginPath();
+  c.moveTo(x+rr,y);
+  c.lineTo(x+w-rr,y);c.quadraticCurveTo(x+w,y,x+w,y+rr);
+  c.lineTo(x+w,y+h-rr);c.quadraticCurveTo(x+w,y+h,x+w-rr,y+h);
+  c.lineTo(x+rr,y+h);c.quadraticCurveTo(x,y+h,x,y+h-rr);
+  c.lineTo(x,y+rr);c.quadraticCurveTo(x,y,x+rr,y);
+  c.closePath();
+}
+
 export class Renderer{
-  constructor(canvas){this.c=canvas;this.x=canvas.getContext('2d');}
+  constructor(canvas){
+    this.c=canvas;
+    this.x=canvas.getContext('2d');
+    if(!this.x) throw new Error('Canvas 2D is not available');
+  }
   draw(game){
     const c=this.x;c.clearRect(0,0,this.c.width,this.c.height);
     this.bg(c);
@@ -29,7 +44,7 @@ export class Renderer{
     c.fillStyle='#10151f';c.beginPath();c.arc(-3,-28,14,Math.PI,Math.PI*2);c.fill();
     c.strokeStyle=f.color;c.lineWidth=5;c.beginPath();c.moveTo(-14,-28);c.lineTo(14,-28);c.stroke();
     c.strokeStyle='#07101d';c.fillStyle='#eef5ff';c.lineWidth=6;
-    c.beginPath();c.roundRect(-17,-8,34,38,8);c.fill();c.stroke();
+    roundedRectPath(c,-17,-8,34,38,8);c.fill();c.stroke();
     c.strokeStyle=f.color;c.lineWidth=5;c.beginPath();c.moveTo(0,-5);c.lineTo(0,27);c.stroke();
     c.strokeStyle='#07101d';c.lineWidth=7;
     if(f.state==='kick'){
