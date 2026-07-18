@@ -1,0 +1,37 @@
+{
+  "spriteTargetSize": {
+    "recommended": "48x48",
+    "minimum": "32x32"
+  },
+  "lineStyle": "thick",
+  "basePose": "floating, one knee slightly bent, empty hands",
+  "palette": {
+    "player": [
+      "#07101d",
+      "#2988ff",
+      "#eef5ff",
+      "#f3bf91"
+    ],
+    "enemy": [
+      "#07101d",
+      "#e74757",
+      "#fff0f0",
+      "#f3bf91"
+    ]
+  },
+  "animations": {
+    "idle": 2,
+    "lightHit": 1,
+    "heavyHit": 2,
+    "kick": 3,
+    "shot": 1,
+    "dash": 2,
+    "guard": 2
+  },
+  "notes": [
+    "Leg length must remain constant during kick.",
+    "Kick rises from below to head height.",
+    "Only the foot glows; crescent effect is an afterimage.",
+    "Character is always airborne; no walk animation."
+  ]
+}

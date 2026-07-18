@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+  <meta name="theme-color" content="#07111f">
+  <title>Floating Magic Fighter</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <main id="game-wrap">
+    <canvas id="game" width="960" height="540" aria-label="Floating Magic Fighter"></canvas>
+    <div id="hud">
+      <div class="hp"><span>PLAYER</span><div><i id="p1hp"></i></div></div>
+      <div class="hp enemy"><span>ENEMY</span><div><i id="p2hp"></i></div></div>
+    </div>
+
+    <div id="touch-ui">
+      <div id="stick-base"><div id="stick-knob"></div></div>
+      <div id="buttons">
+        <button data-action="guard" class="guard">G<small>ガード</small></button>
+        <button data-action="dash" class="dash">C<small>移動技</small></button>
+        <button data-action="kick" class="kick">B<small>キック</small></button>
+        <button data-action="shot" class="shot">A<small>魔力弾</small></button>
+      </div>
+    </div>
+  </main>
+  <script type="module" src="src/main.js"></script>
+</body>
+</html>
