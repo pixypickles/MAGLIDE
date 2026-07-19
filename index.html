@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
 <meta name="theme-color" content="#07111f">
-<title>Floating Magic Fighter v8</title>
+<title>Floating Magic Fighter v9</title>
 <style>
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#030914;color:#fff;font-family:Arial,"Noto Sans JP",sans-serif;touch-action:none}
@@ -28,6 +28,11 @@ canvas{position:absolute;inset:0;width:100%;height:100%;display:block}
 #message.show{animation:msg 1s}
 @keyframes msg{0%,100%{opacity:0}20%,80%{opacity:1}}
 #error{display:none;position:absolute;left:12px;right:12px;top:80px;padding:12px;background:#9d1530;border:2px solid white;border-radius:8px;z-index:20;font-size:13px}
+#result{display:none;position:absolute;inset:0;z-index:30;background:#020710bb;align-items:center;justify-content:center;text-align:center}
+#result.show{display:flex}
+#result-panel{min-width:260px;padding:28px 34px;border:3px solid white;border-radius:18px;background:#09213a;box-shadow:0 12px 40px #000}
+#result-title{margin:0 0 18px;font-size:38px}
+#restart{position:static;width:auto;height:auto;padding:13px 28px;border-radius:30px;border:3px solid white;background:#168be5;color:white;font-size:18px;font-weight:bold}
 @media(max-width:430px){
  #stick{width:116px;height:116px}
  #knob{left:30px;top:30px;width:52px;height:52px}
@@ -53,6 +58,12 @@ canvas{position:absolute;inset:0;width:100%;height:100%;display:block}
 </div>
 <div id="message"></div>
 <div id="error"></div>
+<div id="result">
+ <div id="result-panel">
+  <h1 id="result-title">YOU WIN</h1>
+  <button id="restart">もう一度</button>
+ </div>
+</div>
 </div>
 <script>
 (function(){
@@ -61,9 +72,18 @@ var canvas=document.getElementById("game");
 var ctx=canvas.getContext("2d");
 var W=960,H=540,last=Date.now(),time=0;
 var input={x:0,y:0,shot:false,kick:false,dash:false,guard:false,shotTap:false,kickTap:false,dashTap:false,guardTap:false};
-var shots=[],effects=[];
+var shots=[],effects=[],gameOver=false;
 var p=makeFighter(250,270,"#248cff",1);
 var e=makeFighter(710,270,"#eb4059",-1);
+document.getElementById("restart").addEventListener("click",function(){
+ p=makeFighter(250,270,"#248cff",1);
+ e=makeFighter(710,270,"#eb4059",-1);
+ shots=[];effects=[];gameOver=false;
+ document.getElementById("result").className="";
+ input.x=input.y=0;
+ input.shot=input.kick=input.dash=input.guard=false;
+ input.shotTap=input.kickTap=input.dashTap=input.guardTap=false;
+});
 
 function fail(err){
  var box=document.getElementById("error");
@@ -90,19 +110,17 @@ function clamp(v,a,b){return Math.max(a,Math.min(b,v));}
 
 function setupButton(id,name){
  var b=document.getElementById(id);
- function down(ev){ev.preventDefault();input[name]=true;input[name+"Tap"]=true;}
+ function down(ev){ev.preventDefault();if(gameOver)return;input[name]=true;input[name+"Tap"]=true;}
  function up(ev){ev.preventDefault();input[name]=false;}
- b.addEventListener("touchstart",down,{passive:false});
- b.addEventListener("touchend",up,{passive:false});
- b.addEventListener("touchcancel",up,{passive:false});
- b.addEventListener("mousedown",down);
- b.addEventListener("mouseup",up);
- b.addEventListener("mouseleave",up);
+ b.addEventListener("pointerdown",down);
+ b.addEventListener("pointerup",up);
+ b.addEventListener("pointercancel",up);
+ b.addEventListener("pointerleave",up);
 }
 setupButton("a","shot");setupButton("b","kick");setupButton("c","dash");setupButton("g","guard");
 
 var stick=document.getElementById("stick"),knob=document.getElementById("knob"),stickOn=false;
-function stickMove(clientX,clientY){
+function stickMove(clientX,clientY){if(gameOver)return;
  var r=stick.getBoundingClientRect(),cx=r.left+r.width/2,cy=r.top+r.height/2;
  var dx=clientX-cx,dy=clientY-cy,max=r.width*.34,l=Math.sqrt(dx*dx+dy*dy)||1;
  if(l>max){dx=dx/l*max;dy=dy/l*max;}
@@ -169,7 +187,19 @@ function damage(f,amount,heavy,sourceX){
   f.y+=26;
  }
  if(f.y>H-34&&!heavy){f.state="fall";f.timer=.20;f.y=H+60}
- if(f.hp<=0){f.hp=100;f.x=f===p?250:710;f.y=270;f.state="idle";}
+ if(f.hp<=0){
+  f.hp=0;
+  finishMatch(f===e);
+ }
+}
+function finishMatch(playerWon){
+ if(gameOver)return;
+ gameOver=true;
+ input.x=input.y=0;
+ input.shot=input.kick=input.dash=input.guard=false;
+ input.shotTap=input.kickTap=input.dashTap=input.guardTap=false;
+ document.getElementById("result-title").textContent=playerWon?"YOU WIN":"YOU LOSE";
+ document.getElementById("result").className="show";
 }
 function updateFighter(f,target,dt,mx,my,player){
  f.shotCd=Math.max(0,f.shotCd-dt);f.kickCd=Math.max(0,f.kickCd-dt);f.dashCd=Math.max(0,f.dashCd-dt);f.inv=Math.max(0,f.inv-dt);
@@ -228,14 +258,14 @@ function updateFighter(f,target,dt,mx,my,player){
    nx=f.startX+f.face*390*q;
    ny=f.startY+190*q+Math.sin(q*Math.PI*3)*34;
   }
-  f.x=nx;f.y=ny;
+  f.x=clamp(nx,45,915);f.y=clamp(ny,85,475);
   var tvx=f.x-oldX,tvy=f.y-oldY;
   if(Math.abs(tvx)+Math.abs(tvy)>.01){
    f.dashRot=Math.atan2(tvy,tvx*f.face);
   }
-  effects.push({type:"trail",x:f.x,y:f.y,life:.12,max:.12,color:f.color});
+  if((Math.floor(q*24)%2)===0)effects.push({type:"dashTrail",x1:oldX,y1:oldY,x2:f.x,y2:f.y,life:.11,max:.11,color:f.color});
   if(!f.hitDone&&Math.sqrt(Math.pow(f.x-target.x,2)+Math.pow(f.y-target.y,2))<72){f.hitDone=true;damage(target,12,false,f.x)}
-  if(f.timer<=0){f.state="idle";f.x=clamp(f.x,45,915);f.y=clamp(f.y,85,475)}
+  if(f.timer<=0){f.state="idle"}
   return;
  }
  f.x=clamp(f.x+mx*310*dt,45,915);f.y=clamp(f.y+my*310*dt,85,475);
@@ -270,6 +300,11 @@ function updateShots(dt){
 }
 function update(dt){
  time+=dt;
+ if(gameOver){
+  document.getElementById("php").style.width=p.hp+"%";
+  document.getElementById("ehp").style.width=e.hp+"%";
+  return;
+ }
  var mx=input.x,my=input.y;
  if(keys.arrowleft||keys.a)mx=-1;if(keys.arrowright||keys.d)mx=1;if(keys.arrowup||keys.w)my=-1;if(keys.arrowdown||keys.s)my=1;
  var n=Math.sqrt(mx*mx+my*my);if(n>1){mx/=n;my/=n}
@@ -350,7 +385,22 @@ function draw(){
  ctx.setTransform(1,0,0,1,0,0);ctx.clearRect(0,0,canvas.width,canvas.height);worldTransform();drawBg();
  for(var i=0;i<effects.length;i++){
   var z=effects[i],a=z.life/z.max;ctx.save();ctx.globalAlpha=a;ctx.translate(z.x,z.y);
-  if(z.type==="trail"){ctx.fillStyle=z.color;ctx.beginPath();ctx.arc(0,0,12+(1-a)*27,0,Math.PI*2);ctx.fill()}
+  if(z.type==="dashTrail"){
+   ctx.restore();
+   ctx.save();
+   ctx.globalAlpha=a*.55;
+   ctx.strokeStyle=z.color;
+   ctx.lineWidth=10*a+2;
+   ctx.lineCap="round";
+   ctx.beginPath();
+   ctx.moveTo(z.x1,z.y1);
+   ctx.lineTo(z.x2,z.y2);
+   ctx.stroke();
+   ctx.restore();
+   ctx.save();
+   ctx.globalAlpha=a;
+   ctx.translate(z.x2,z.y2);
+  }
   if(z.type==="hit"){ctx.strokeStyle="#fff";ctx.lineWidth=5;for(var j=0;j<8;j++){ctx.rotate(Math.PI/4);ctx.beginPath();ctx.moveTo(8,0);ctx.lineTo(z.heavy?46:34,0);ctx.stroke()}}
   if(z.type==="guard"){ctx.strokeStyle="#7cffae";ctx.lineWidth=8;ctx.beginPath();ctx.arc(0,0,43,0,Math.PI*2);ctx.stroke()}
   if(z.type==="kick"){ctx.scale(z.face,1);ctx.strokeStyle="#68d6ff";ctx.lineWidth=10;ctx.beginPath();ctx.arc(0,0,55,-1.3,.55);ctx.stroke()}
