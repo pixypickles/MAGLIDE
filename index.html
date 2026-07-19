@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
 <meta name="theme-color" content="#07111f">
-<title>Floating Magic Fighter v9</title>
+<title>Floating Magic Fighter v10</title>
 <style>
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#030914;color:#fff;font-family:Arial,"Noto Sans JP",sans-serif;touch-action:none}
@@ -103,7 +103,7 @@ resize();
 
 function makeFighter(x,y,color,face){
  return {x:x,y:y,baseY:y,color:color,face:face,hp:100,state:"idle",timer:0,shotCd:0,kickCd:0,dashCd:0,
- guard:false,guardAge:99,inv:0,dashX:0,dashY:0,startX:x,startY:y,hitDone:false,seed:Math.random()*10,knockVX:0,wallSide:0,slideVY:0,dashType:"forward",dashRot:0};
+ guard:false,guardAge:99,inv:0,dashX:0,dashY:0,startX:x,startY:y,hitDone:false,seed:Math.random()*10,knockVX:0,wallSide:0,slideVY:0,dashType:"forward",dashRot:0,dashFace:face};
 }
 function norm(x,y){var l=Math.sqrt(x*x+y*y)||1;return{x:x/l,y:y/l};}
 function clamp(v,a,b){return Math.max(a,Math.min(b,v));}
@@ -138,7 +138,7 @@ window.addEventListener("mouseup",stickEnd);
 var keys={};
 window.addEventListener("keydown",function(ev){
  var k=ev.key.toLowerCase();keys[k]=true;
- if(k==="j")input.shotTap=true;if(k==="k")input.kickTap=true;if(k==="l")input.dashTap=true;if(k==="i")input.guardTap=true;
+ if(k==="j")input.shotTap=true;if(k==="k")input.kickTap=true;if(k==="l"&&!ev.repeat)input.dashTap=true;if(k==="i")input.guardTap=true;
 });
 window.addEventListener("keyup",function(ev){keys[ev.key.toLowerCase()]=false;});
 
@@ -168,7 +168,7 @@ function dash(f,mx,my,target){
   f.dashX=0;f.dashY=my>0?1:-1;
   f.dashType=f.dashY<0?"up":"down";
  }
- f.dashRot=0;
+ f.dashRot=0;f.dashFace=f.face;
 }
 function damage(f,amount,heavy,sourceX){
  if(f.inv>0)return;
@@ -203,7 +203,7 @@ function finishMatch(playerWon){
 }
 function updateFighter(f,target,dt,mx,my,player){
  f.shotCd=Math.max(0,f.shotCd-dt);f.kickCd=Math.max(0,f.kickCd-dt);f.dashCd=Math.max(0,f.dashCd-dt);f.inv=Math.max(0,f.inv-dt);
- f.face=target.x>=f.x?1:-1;
+ if(f.state!=="dash")f.face=target.x>=f.x?1:-1;
  if(f.state==="fall"){f.timer-=dt;if(f.timer<=0){f.state="rise";f.y=H+35}return}
  if(f.state==="rise"){f.y-=650*dt;if(f.y<=270){f.y=270;f.state="idle";f.inv=.5}return}
  if(f.state==="knockback"){
@@ -241,29 +241,32 @@ function updateFighter(f,target,dt,mx,my,player){
   f.timer-=dt;var total=f.dashType==="backward"?.72:.56;var q=1-f.timer/total;
   var oldX=f.x,oldY=f.y,nx=f.startX,ny=f.startY;
   if(f.dashType==="forward"){
-   nx=f.startX+f.face*430*q;
+   nx=f.startX+f.dashFace*430*q;
    ny=f.startY+Math.sin(q*Math.PI*2)*48;
   }else if(f.dashType==="backward"){
    var ang=q*Math.PI*2;
-   var forward=f.face;
+   var forward=f.dashFace;
    var loopX=115*Math.sin(ang);
    var loopY=-105*(1-Math.cos(ang));
    var feint=forward*55*Math.sin(Math.min(q/.18,1)*Math.PI/2)*(q<.18?1:Math.max(0,1-(q-.18)/.82));
    nx=f.startX+feint+forward*loopX-forward*25*q;
    ny=f.startY+loopY;
   }else if(f.dashType==="up"){
-   nx=f.startX+f.face*390*q;
+   nx=f.startX+f.dashFace*390*q;
    ny=f.startY-190*q+Math.sin(q*Math.PI*3)*34;
   }else if(f.dashType==="down"){
-   nx=f.startX+f.face*390*q;
+   nx=f.startX+f.dashFace*390*q;
    ny=f.startY+190*q+Math.sin(q*Math.PI*3)*34;
   }
   f.x=clamp(nx,45,915);f.y=clamp(ny,85,475);
   var tvx=f.x-oldX,tvy=f.y-oldY;
   if(Math.abs(tvx)+Math.abs(tvy)>.01){
-   f.dashRot=Math.atan2(tvy,tvx*f.face);
+   f.dashRot=Math.atan2(tvy,tvx*f.dashFace);
   }
-  if((Math.floor(q*24)%2)===0)effects.push({type:"dashTrail",x1:oldX,y1:oldY,x2:f.x,y2:f.y,life:.11,max:.11,color:f.color});
+  var trailDist=Math.sqrt(Math.pow(f.x-oldX,2)+Math.pow(f.y-oldY,2));
+  if(trailDist>1&&trailDist<65&&(Math.floor(q*24)%2)===0){
+   effects.push({type:"dashTrail",x1:oldX,y1:oldY,x2:f.x,y2:f.y,life:.09,max:.09,color:f.color});
+  }
   if(!f.hitDone&&Math.sqrt(Math.pow(f.x-target.x,2)+Math.pow(f.y-target.y,2))<72){f.hitDone=true;damage(target,12,false,f.x)}
   if(f.timer<=0){f.state="idle"}
   return;
@@ -312,7 +315,7 @@ function update(dt){
  updateFighter(p,e,dt,mx,my,true);
  if(input.shotTap||keys.j)fire(p,e,mx,my);
  if(input.kickTap||keys.k)kick(p,e);
- if(input.dashTap||keys.l)dash(p,mx,my,e);
+ if(input.dashTap)dash(p,mx,my,e);
  ai(dt);updateShots(dt);
  for(var i=effects.length-1;i>=0;i--){effects[i].life-=dt;if(effects[i].life<=0)effects.splice(i,1)}
  input.shotTap=input.kickTap=input.dashTap=input.guardTap=false;
@@ -335,7 +338,7 @@ function roundRect(x,y,w,h,r){
 function drawFighter(f){
  if(f.state==="fall")return;
  var hover=f.state==="idle"?Math.sin(time*2.4+f.seed)*5:0;
- ctx.save();ctx.translate(f.x,f.y+hover);ctx.scale(f.face,1);
+ ctx.save();ctx.translate(f.x,f.y+hover);ctx.scale(f.state==="dash"?f.dashFace:f.face,1);
  if(f.state==="dash")ctx.rotate(f.dashRot);if(f.state==="knockback")ctx.rotate(f.wallSide*.65);if(f.state==="wallslide")ctx.rotate(f.wallSide*.25);
  ctx.lineCap="round";ctx.lineJoin="round";ctx.strokeStyle="#07101d";ctx.lineWidth=6;
  ctx.fillStyle=f.color;ctx.beginPath();ctx.arc(0,-25,18,0,Math.PI*2);ctx.fill();ctx.stroke();
@@ -388,9 +391,9 @@ function draw(){
   if(z.type==="dashTrail"){
    ctx.restore();
    ctx.save();
-   ctx.globalAlpha=a*.55;
+   ctx.globalAlpha=a*.38;
    ctx.strokeStyle=z.color;
-   ctx.lineWidth=10*a+2;
+   ctx.lineWidth=6*a+2;
    ctx.lineCap="round";
    ctx.beginPath();
    ctx.moveTo(z.x1,z.y1);
